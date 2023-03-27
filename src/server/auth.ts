@@ -4,7 +4,7 @@ import {
   type NextAuthOptions,
   type DefaultSession,
 } from "next-auth";
-import DiscordProvider from "next-auth/providers/discord";
+import GoogleProvider from "next-auth/providers/google";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { env } from "@/env.mjs";
 import { prisma } from "@/server/db";
@@ -17,17 +17,19 @@ import { prisma } from "@/server/db";
  */
 declare module "next-auth" {
   interface Session extends DefaultSession {
-    user: {
+    user?: {
       id: string;
-      // ...other properties
-      // role: UserRole;
+      role: "ADMIN" | "USER";
+      status: "ACTIVE" | "INACTIVE";
+      verification: "VERIFIED" | "UNVERIFIED";
     } & DefaultSession["user"];
   }
 
-  // interface User {
-  //   // ...other properties
-  //   // role: UserRole;
-  // }
+  interface User {
+    role: "ADMIN" | "USER";
+    status: "ACTIVE" | "INACTIVE";
+    verification: "VERIFIED" | "UNVERIFIED";
+  }
 }
 
 /**
@@ -40,6 +42,9 @@ export const authOptions: NextAuthOptions = {
     session({ session, user }) {
       if (session.user) {
         session.user.id = user.id;
+        session.user.role = user.role;
+        session.user.status = user.status;
+        session.user.verification = user.verification;
         // session.user.role = user.role; <-- put other properties on the session here
       }
       return session;
@@ -47,9 +52,12 @@ export const authOptions: NextAuthOptions = {
   },
   adapter: PrismaAdapter(prisma),
   providers: [
-    DiscordProvider({
-      clientId: env.DISCORD_CLIENT_ID,
-      clientSecret: env.DISCORD_CLIENT_SECRET,
+    GoogleProvider({
+      clientId: env.GOOGLE_CLIENT_ID,
+      clientSecret: env.GOOGLE_CLIENT_SECRET,
+      httpOptions: {
+        timeout: 30000,
+      },
     }),
     /**
      * ...add more providers here.
